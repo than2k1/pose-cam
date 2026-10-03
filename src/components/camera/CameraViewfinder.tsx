@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, AppState, AppStateStatus, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCameraStore } from '../../stores/useCameraStore';
@@ -21,7 +21,7 @@ import { ExposureAlertOverlay } from './ExposureAlertOverlay';
 import { CompositionGridOverlay } from './CompositionGridOverlay';
 import { CompositionGuidanceOverlay } from './CompositionGuidanceOverlay';
 import { GridModeToggle } from './GridModeToggle';
-import { useSafeCameraDevice } from '../../utils/cameraHooks';
+import { useSafeCameraDevice, useSafeCameraFormat } from '../../utils/cameraHooks';
 
 // Dynamic load Camera component for native platforms only
 let CameraComponent: any = null;
@@ -34,9 +34,16 @@ if (Platform.OS !== 'web') {
   }
 }
 
+const CAMERA_FORMAT_FILTERS = [
+  { photoResolution: 'max' as const },
+  { videoResolution: 'max' as const },
+];
+
 export const CameraViewfinder: React.FC = () => {
   const cameraRef = useRef<any>(null);
   const device = useSafeCameraDevice('back');
+  const format = useSafeCameraFormat(device, CAMERA_FORMAT_FILTERS);
+  const [isCameraInitialized, setIsCameraInitialized] = useState(false);
   const mode = useCameraStore((state) => state.mode);
   const isAppActive = useCameraStore((state) => state.isAppActive);
   const setIsAppActive = useCameraStore((state) => state.setIsAppActive);
@@ -47,7 +54,20 @@ export const CameraViewfinder: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { onViewportLayout } = useLensGuidance();
 
-  const { isCapturing, toastMessage, captureAndSavePhoto, clearToast } = usePhotoCapture({ cameraRef });
+  const isCameraActive = isAppActive && !isFrozen;
+
+  const onCameraInitialized = useCallback(() => {
+    setIsCameraInitialized(true);
+  }, []);
+
+  const onCameraError = useCallback((error: any) => {
+    console.warn('Camera runtime error:', error);
+  }, []);
+
+  const { isCapturing, toastMessage, captureAndSavePhoto, clearToast } = usePhotoCapture({
+    cameraRef,
+    isCameraInitialized,
+  });
 
   // Auto-dismiss toast notification
   useEffect(() => {
@@ -115,8 +135,6 @@ export const CameraViewfinder: React.FC = () => {
   const targetZoom = getNumericZoom(activeLens);
   const zoomValue = device ? clampZoom(targetZoom, device.minZoom, device.maxZoom) : targetZoom;
 
-  const isCameraActive = isAppActive && !isFrozen;
-
   return (
     <View style={styles.container} onLayout={onViewportLayout}>
       {device && CameraComponent ? (
@@ -124,13 +142,15 @@ export const CameraViewfinder: React.FC = () => {
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           device={device}
+          format={format}
           isActive={isCameraActive}
           zoom={zoomValue}
-          fps={60}
           enableFpsGraph={false}
-          lowLightBoost={true}
+          lowLightBoost={device?.supportsLowLightBoost ?? false}
           photo={true}
           video={false}
+          onInitialized={onCameraInitialized}
+          onError={onCameraError}
         />
       ) : (
         <View style={styles.simulatorPreviewCanvas}>

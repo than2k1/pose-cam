@@ -33,3 +33,17 @@ export function useSafeCameraDevice(position: 'back' | 'front') {
     return null;
   }
 }
+
+export function useSafeCameraFormat(device: any, filters?: any[]) {
+  if (Platform.OS === 'web' || !device) {
+    return undefined;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useCameraFormat } = require('react-native-vision-camera');
+    return useCameraFormat(device, filters || [{ photoResolution: 'max' }, { videoResolution: 'max' }]);
+  } catch {
+    return undefined;
+  }
+}

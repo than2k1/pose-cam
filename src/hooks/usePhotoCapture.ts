@@ -10,6 +10,7 @@ try {
 
 export interface UsePhotoCaptureOptions {
   cameraRef?: React.RefObject<any>;
+  isCameraInitialized?: boolean;
 }
 
 export interface UsePhotoCaptureResult {
@@ -26,11 +27,24 @@ export async function executePhotoCapture(options?: UsePhotoCaptureOptions): Pro
 
   // Real device Camera capture via cameraRef if available
   if (options?.cameraRef?.current && typeof options.cameraRef.current.takePhoto === 'function') {
-    const photo = await options.cameraRef.current.takePhoto({
-      flash: 'off',
-      enableShutterSound: true,
-    });
-    photoUri = photo.path ? `file://${photo.path}` : photo.uri || null;
+    try {
+      const photo = await options.cameraRef.current.takePhoto({
+        flash: 'off',
+        enableShutterSound: true,
+      });
+      photoUri = photo.path ? `file://${photo.path}` : photo.uri || null;
+    } catch (cameraErr: any) {
+      const errMsg = cameraErr?.message || String(cameraErr);
+      if (
+        errMsg.toLowerCase().includes('not ready') ||
+        errMsg.toLowerCase().includes('oninitialized') ||
+        errMsg.toLowerCase().includes('not-ready') ||
+        errMsg.toLowerCase().includes('not-initialized')
+      ) {
+        return { uri: null, toast: 'Camera is still initializing, please wait...' };
+      }
+      throw cameraErr;
+    }
   }
 
   // Fallback URI for simulator or web preview
@@ -90,7 +104,7 @@ export function usePhotoCapture(options?: UsePhotoCaptureOptions): UsePhotoCaptu
     } finally {
       setIsCapturing(false);
     }
-  }, [options?.cameraRef]);
+  }, [options?.cameraRef, options?.isCameraInitialized]);
 
   return {
     isCapturing,

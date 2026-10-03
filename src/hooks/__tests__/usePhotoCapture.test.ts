@@ -1,3 +1,4 @@
+export {};
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { executePhotoCapture } = require('../usePhotoCapture');
 
@@ -36,6 +37,43 @@ async function runPhotoCaptureUnitTests() {
 
     assert(state.takePhotoCalled === true, 'takePhoto on cameraRef should be called when cameraRef is active');
     assert(result.uri === 'file:///tmp/test_photo.jpg', 'Returned URI should match cameraRef photo path');
+  }
+
+  // Test 3: Native camera error fallback handling
+  {
+    const mockCameraRef = {
+      current: {
+        takePhoto: async () => {
+          throw new Error('Camera not ready');
+        },
+      },
+    };
+
+    const result = await executePhotoCapture({
+      cameraRef: mockCameraRef as any,
+    });
+
+    assert(result.uri === null, 'URI should be null when uninitialized');
+    assert(result.toast.includes('initializing'), 'Toast should indicate initializing state');
+  }
+
+  // Test 4: Native vision-camera uninitialized exception handling
+  {
+    const mockCameraRef = {
+      current: {
+        takePhoto: async () => {
+          throw new Error('[camera/not-initialized] The camera is not ready yet! Wait for the onInitialized() callback!');
+        },
+      },
+    };
+
+    const result = await executePhotoCapture({
+      cameraRef: mockCameraRef as any,
+      isCameraInitialized: true,
+    });
+
+    assert(result.uri === null, 'URI should be null on caught initialization error');
+    assert(result.toast.includes('initializing'), 'Toast should indicate initializing state');
   }
 
   console.log('executePhotoCapture unit tests passed successfully!');

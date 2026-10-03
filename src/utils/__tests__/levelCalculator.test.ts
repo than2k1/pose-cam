@@ -3,6 +3,8 @@ import {
   normalizeAngle,
   calculateRollDegrees,
   isWithinLevelThreshold,
+  calculateRollDegreesFromAccel,
+  calculatePitchDegreesFromAccel,
 } from '../levelCalculator';
 
 function assert(condition: boolean, message: string) {
@@ -40,6 +42,20 @@ export function runLevelCalculatorTests() {
   assertCloseTo(calculateRollDegrees({ gamma: 0.0872665 }), 5, 1, 'gamma 0.087 rad');
   assertCloseTo(calculateRollDegrees({ gamma: -0.0174533 }), -1, 1, 'gamma -0.017 rad');
 
+  // Test calculateRollDegreesFromAccel
+  assert(calculateRollDegreesFromAccel(null) === 0, 'null accel');
+  assert(calculateRollDegreesFromAccel(undefined) === 0, 'undefined accel');
+  assert(calculateRollDegreesFromAccel({ x: 0, y: -1, z: 0 }) === 0, 'upright portrait is 0 roll');
+  assertCloseTo(calculateRollDegreesFromAccel({ x: 1, y: 0, z: 0 }), 90, 1, 'tilted 90 deg right');
+  assertCloseTo(calculateRollDegreesFromAccel({ x: -1, y: 0, z: 0 }), -90, 1, 'tilted 90 deg left');
+
+  // Test calculatePitchDegreesFromAccel
+  assert(calculatePitchDegreesFromAccel(null) === 0, 'null pitch accel');
+  assert(calculatePitchDegreesFromAccel(undefined) === 0, 'undefined pitch accel');
+  assert(calculatePitchDegreesFromAccel({ x: 0, y: -1, z: 0 }) === 0, 'upright portrait is 0 pitch');
+  assertCloseTo(calculatePitchDegreesFromAccel({ x: 0, y: 0, z: 1 }), 90, 1, 'pointing straight up is +90 pitch');
+  assertCloseTo(calculatePitchDegreesFromAccel({ x: 0, y: 0, z: -1 }), -90, 1, 'pointing straight down is -90 pitch');
+
   // Test isWithinLevelThreshold
   assert(isWithinLevelThreshold(0, 1.0) === true, 'level 0 deg');
   assert(isWithinLevelThreshold(0.5, 1.0) === true, 'level 0.5 deg');
@@ -54,6 +70,4 @@ export function runLevelCalculatorTests() {
 }
 
 // Auto-run if executed directly
-if (require.main === module) {
-  runLevelCalculatorTests();
-}
+runLevelCalculatorTests();

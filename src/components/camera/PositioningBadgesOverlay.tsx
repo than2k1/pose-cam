@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DeviceMotion } from 'expo-sensors';
 import { useCameraStore } from '../../stores/useCameraStore';
+import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 import { evaluateCameraPositioning } from '../../utils/positioningEngine';
 
 export const PositioningBadgesOverlay: React.FC = () => {
@@ -10,42 +10,7 @@ export const PositioningBadgesOverlay: React.FC = () => {
   const visionResult = useCameraStore((state) => state.visionResult);
   const selectedFraming = useCameraStore((state) => state.selectedFraming);
   const insets = useSafeAreaInsets();
-  const [pitchDegrees, setPitchDegrees] = useState<number>(0);
-
-  useEffect(() => {
-    if (!isFrozen) {
-      return;
-    }
-
-    let isMounted = true;
-    let subscription: { remove: () => void } | null = null;
-
-    const setupPitchSensor = async () => {
-      try {
-        const isAvailable = await DeviceMotion.isAvailableAsync();
-        if (!isAvailable || !isMounted) return;
-
-        DeviceMotion.setUpdateInterval(100);
-        subscription = DeviceMotion.addListener((motionData) => {
-          if (motionData && motionData.rotation && isMounted) {
-            const pitch = (motionData.rotation.beta * 180) / Math.PI;
-            setPitchDegrees(pitch);
-          }
-        });
-      } catch (err) {
-        // Fallback gracefully when DeviceMotion hardware sensor is unavailable
-      }
-    };
-
-    setupPitchSensor();
-
-    return () => {
-      isMounted = false;
-      if (subscription) {
-        subscription.remove();
-      }
-    };
-  }, [isFrozen]);
+  const { pitchDegrees } = useDeviceOrientation();
 
   const evaluation = useMemo(() => {
     if (!isFrozen || !visionResult) return null;

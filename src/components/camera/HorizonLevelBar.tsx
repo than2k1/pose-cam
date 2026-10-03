@@ -1,69 +1,23 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { DeviceMotion } from 'expo-sensors';
-import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useCameraStore } from '../../stores/useCameraStore';
-import { calculateRollDegrees, isWithinLevelThreshold } from '../../utils/levelCalculator';
+import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 
 export const HorizonLevelBar: React.FC = () => {
-  const isAppActive = useCameraStore((state) => state.isAppActive);
   const showHorizonBar = useCameraStore((state) => state.showHorizonBar);
-
-  // Reanimated shared values on UI thread
-  const rollRad = useSharedValue(0);
-  const isLevel = useSharedValue(false);
-
-  useEffect(() => {
-    if (!isAppActive || !showHorizonBar) {
-      return;
-    }
-
-    let isMounted = true;
-    let subscription: { remove: () => void } | null = null;
-
-    const setupSensor = async () => {
-      try {
-        const isAvailable = await DeviceMotion.isAvailableAsync();
-        if (!isAvailable || !isMounted) {
-          return;
-        }
-
-        // Set 60Hz update interval (16ms)
-        DeviceMotion.setUpdateInterval(16);
-
-        subscription = DeviceMotion.addListener((motionData) => {
-          if (motionData && motionData.rotation) {
-            const rollDegrees = calculateRollDegrees(motionData.rotation);
-            const gammaRad = (rollDegrees * Math.PI) / 180;
-            rollRad.value = -gammaRad;
-            isLevel.value = isWithinLevelThreshold(rollDegrees, 1.0);
-          }
-        });
-      } catch (err) {
-        // Handle hardware sensor unavailablity gracefully
-      }
-    };
-
-    setupSensor();
-
-    return () => {
-      isMounted = false;
-      if (subscription) {
-        subscription.remove();
-      }
-    };
-  }, [isAppActive, showHorizonBar, rollRad, isLevel]);
+  const { rollRadShared, isLevelShared } = useDeviceOrientation();
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ rotate: `${rollRad.value}rad` }],
-      backgroundColor: isLevel.value ? '#30D158' : 'rgba(255, 255, 255, 0.8)',
+      transform: [{ rotate: `${rollRadShared.value}rad` }],
+      backgroundColor: isLevelShared.value ? '#30D158' : 'rgba(255, 255, 255, 0.8)',
     };
   });
 
   const animatedCenterDotStyle = useAnimatedStyle(() => {
     return {
-      backgroundColor: isLevel.value ? '#30D158' : 'rgba(255, 255, 255, 0.9)',
+      backgroundColor: isLevelShared.value ? '#30D158' : 'rgba(255, 255, 255, 0.9)',
     };
   });
 

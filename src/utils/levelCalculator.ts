@@ -42,3 +42,37 @@ export function isWithinLevelThreshold(rollDegrees: number, thresholdDegrees: nu
   const normalized = normalizeAngle(rollDegrees);
   return Math.abs(normalized) <= thresholdDegrees;
 }
+
+export interface AccelerometerData {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/**
+ * Calculates roll angle in degrees from raw accelerometer data.
+ * When phone is held upright in portrait, gravity is along -y.
+ */
+export function calculateRollDegreesFromAccel(data?: AccelerometerData | null): number {
+  if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') {
+    return 0;
+  }
+  const rollRad = Math.atan2(data.x, -data.y);
+  return normalizeAngle(radiansToDegrees(rollRad));
+}
+
+/**
+ * Calculates pitch angle in degrees from raw accelerometer data.
+ * Tilting forward (pointing down) is negative, tilting back (pointing up) is positive.
+ */
+export function calculatePitchDegreesFromAccel(data?: AccelerometerData | null): number {
+  if (!data || typeof data.z !== 'number') {
+    return 0;
+  }
+  const x = data.x || 0;
+  const y = data.y || 0;
+  const z = data.z || 0;
+  const pitchRad = Math.atan2(z, Math.sqrt(x * x + y * y));
+  return normalizeAngle(radiansToDegrees(pitchRad));
+}
+

@@ -1,3 +1,4 @@
+export {};
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { CaptureShutterButton } = require('../CaptureShutterButton');
 
